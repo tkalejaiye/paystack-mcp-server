@@ -1,4 +1,5 @@
 import assert from 'node:assert';
+import { redactSensitiveData } from '../src/logger.js';
 import { createPaystackClient } from '../src/paystack-client.js';
 
 describe('PaystackClient', () => {
@@ -119,6 +120,56 @@ describe('PaystackClient', () => {
       } finally {
         global.fetch = originalFetch;
       }
+    });
+  });
+
+  describe('makeRequest - Endpoint Validation', () => {
+    const blocked = ['@evil.example/x', '.evil.example/x', ':8080/x', 'transaction', ''];
+    for (const endpoint of blocked) {
+      it(`should refuse ${JSON.stringify(endpoint)} without sending a request`, async () => {
+        const originalFetch = global.fetch;
+        let fetched = false;
+        global.fetch = async () => {
+          fetched = true;
+          return { status: 200, text: async () => '{}' } as Response;
+        };
+
+        try {
+          await assert.rejects(paystackClient.makeRequest('GET', endpoint), /Invalid endpoint/);
+          assert.strictEqual(fetched, false);
+        } finally {
+          global.fetch = originalFetch;
+        }
+      });
+    }
+
+    it('should send valid paths to api.paystack.co', async () => {
+      const originalFetch = global.fetch;
+      const urls: string[] = [];
+      global.fetch = async (input: any) => {
+        urls.push(String(input));
+        return { status: 200, text: async () => '{"status":true,"data":{}}' } as Response;
+      };
+
+      try {
+        await paystackClient.makeRequest('GET', '/transaction/verify/ref_123');
+        assert.deepStrictEqual(urls, ['https://api.paystack.co/transaction/verify/ref_123']);
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
+  });
+
+  describe('log redaction', () => {
+    it('should redact test and live secret keys inside strings', () => {
+      // Built at runtime so secret scanners don't mistake the fixtures for real keys
+      const testKey = ['sk', 'test', 'x'.repeat(40)].join('_');
+      const liveKey = ['sk', 'live', 'x'.repeat(40)].join('_');
+
+      assert.strictEqual(
+        redactSensitiveData(`failed with ${liveKey} and ${testKey}`),
+        'failed with [REDACTED_SECRET_KEY] and [REDACTED_SECRET_KEY]',
+      );
     });
   });
 });
