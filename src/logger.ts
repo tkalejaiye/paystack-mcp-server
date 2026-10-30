@@ -53,7 +53,7 @@ function redactCardObject(card: any): any {
   return card;
 }
 
-function redactSensitiveData(obj: any): any {
+export function redactSensitiveData(obj: any): any {
   if (obj === null || obj === undefined) {
     return obj;
   }
@@ -62,7 +62,7 @@ function redactSensitiveData(obj: any): any {
     // Redact bearer tokens and API keys in strings
     return obj
       .replace(/Bearer\s+\w+/gi, 'Bearer [REDACTED]')
-      .replace(/sk_test_\w+/g, '[REDACTED_SECRET_KEY]');
+      .replace(/sk_(test|live)_\w+/g, '[REDACTED_SECRET_KEY]');
   }
 
   if (Array.isArray(obj)) {
