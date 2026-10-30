@@ -40,3 +40,5 @@ node_modules/
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
 .vscode
+# Generated from src/data by scripts/bundle-data.mjs
+src/generated/
