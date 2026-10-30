@@ -35,6 +35,8 @@ export const SERVER_INSTRUCTIONS = `You are connected to the Paystack MCP Server
 
 ## Workflow
 Always call "get_paystack_operation" to get endpoint details before calling "make_paystack_request". Do not guess endpoint paths, methods, or parameter names.
+
+For invoices (payment requests), prefer the dedicated tools: "create_invoice", "send_invoice_reminder", "get_invoice_status" and "list_invoices". They take amounts in major units (e.g. naira) and convert to the smallest unit for you.
 `;
 
 /**
