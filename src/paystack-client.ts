@@ -1,5 +1,4 @@
 import { PaystackResponse, PaystackError } from './types';
-import { createPaystackConfig } from './config';
 
 const PAYSTACK_BASE_URL = 'https://api.paystack.co';
 const USER_AGENT = process.env.USER_AGENT || 'Paystack-MCP-Server/0.0.1';
@@ -82,12 +81,4 @@ export class PaystackClient {
       throw error;
     }
   }
-}
-
-/**
- * Create a PaystackClient instance with configuration
- */
-export function createPaystackClient(cliApiKey?: string): PaystackClient {
-  const config = createPaystackConfig(cliApiKey);
-  return new PaystackClient(config.secretKey, config.baseURL, undefined, config.timeout);
 }

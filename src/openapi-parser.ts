@@ -1,23 +1,21 @@
-import * as SwaggerParser from '@apidevtools/swagger-parser';
 import { OpenAPIV3 } from 'openapi-types';
 import { Oas } from './types';
 
 export class OpenAPIParser {
   /**
-   * The URL of the OpenAPI specification to be parsed.
-   * For a start, this only supports local file paths.
+   * The OpenAPI document to be parsed. It's converted from YAML at build time
+   * (see scripts/bundle-data.mjs) so no file system access is needed at runtime.
    */
-  private specURL: string;
+  private spec: OpenAPIV3.Document;
   private operations: Oas.PathsOperations = {};
 
-  constructor(specURL: string) {
-    this.specURL = specURL;
+  constructor(spec: OpenAPIV3.Document) {
+    this.spec = spec;
   }
 
-  async parse() {
+  parse() {
     try {
-      const api = (await SwaggerParser.default.parse(this.specURL)) as OpenAPIV3.Document;
-      this.buildOperationsMap(api);
+      this.buildOperationsMap(this.spec);
     } catch (error) {
       console.error('Error parsing OpenAPI spec:', error);
     }

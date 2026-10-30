@@ -1,5 +1,5 @@
 import assert from 'node:assert';
-import { createPaystackClient } from '../src/paystack-client.js';
+import { createPaystackClient } from '../src/config.js';
 
 describe('PaystackClient', () => {
   // Use a test API key for the test client
