@@ -4,10 +4,14 @@
 import OAuthProvider, { type OAuthHelpers } from '@cloudflare/workers-oauth-provider';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { McpAgent } from 'agents/mcp';
-import { PaystackClient } from '../paystack-client';
 import { registerPaystackCapabilities, SERVER_INFO, SERVER_INSTRUCTIONS } from '../server';
 import { AuthProps, isAllowedUser } from './auth-utils';
 import { GitHubHandler } from './github-handler';
+import {
+  createModePaystackClient,
+  instructionsForMode,
+  resolvePaystackConfig,
+} from './paystack-mode';
 
 export interface Env {
   OAUTH_KV: KVNamespace;
@@ -18,22 +22,21 @@ export interface Env {
   COOKIE_ENCRYPTION_KEY: string;
   ALLOWED_GITHUB_USERS: string;
   PUBLIC_URL: string;
+  /** "test" (default) or "live" */
+  PAYSTACK_MODE?: string;
   PAYSTACK_SECRET_KEY: string;
 }
 
-function resolveSecretKey(env: Env): string {
-  const key = env.PAYSTACK_SECRET_KEY;
-  if (!key) throw new Error('PAYSTACK_SECRET_KEY is not set');
-  if (!key.startsWith('sk_test_'))
-    throw new Error('PAYSTACK_SECRET_KEY must begin with "sk_test_"');
-  return key;
-}
-
 export class PaystackMCP extends McpAgent<Env, unknown, AuthProps> {
-  server = new McpServer(SERVER_INFO, { instructions: SERVER_INSTRUCTIONS });
+  server = new McpServer(SERVER_INFO, {
+    // apiHandler has already validated the config before any request reaches this object
+    instructions: instructionsForMode(SERVER_INSTRUCTIONS, resolvePaystackConfig(this.env).mode),
+  });
 
   async init() {
-    await registerPaystackCapabilities(this.server, new PaystackClient(resolveSecretKey(this.env)));
+    // Live mode gets a client that enforces src/worker/live-allowlist.ts on every tool
+    const { client } = createModePaystackClient(this.env);
+    await registerPaystackCapabilities(this.server, client);
   }
 }
 
@@ -47,7 +50,7 @@ const apiHandler = {
       return new Response('Forbidden', { status: 403 });
     }
     try {
-      resolveSecretKey(env);
+      resolvePaystackConfig(env);
     } catch (error) {
       return new Response(`Server misconfigured: ${(error as Error).message}`, { status: 500 });
     }
