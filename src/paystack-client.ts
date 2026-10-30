@@ -34,7 +34,7 @@ export class PaystackClient {
    */
 
   async makeRequest<T>(method: string, endpoint: string, data?: any): Promise<PaystackResponse<T>> {
-    const url = `${this.baseUrl}${endpoint}`;
+    let url = `${this.baseUrl}${endpoint}`;
 
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.secretKey}`,
@@ -50,6 +50,16 @@ export class PaystackClient {
     if (data && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method.toUpperCase())) {
       headers['Content-Type'] = 'application/json';
       options.body = JSON.stringify(data);
+    }
+
+    // GET requests carry their data as query parameters
+    if (data && typeof data === 'object' && method.toUpperCase() === 'GET') {
+      const query = new URLSearchParams();
+      for (const [key, value] of Object.entries(data)) {
+        if (value !== undefined && value !== null) query.append(key, String(value));
+      }
+      const queryString = query.toString();
+      if (queryString) url += `${url.includes('?') ? '&' : '?'}${queryString}`;
     }
     options.headers = headers;
 
