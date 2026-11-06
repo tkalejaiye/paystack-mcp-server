@@ -38,7 +38,7 @@ export class PaystackClient {
     if (!endpoint.startsWith('/')) {
       throw new Error(`Invalid endpoint "${endpoint}": paths must start with "/"`);
     }
-    const url = `${this.baseUrl}${endpoint}`;
+    let url = `${this.baseUrl}${endpoint}`;
     if (new URL(url).origin !== new URL(this.baseUrl).origin) {
       throw new Error(`Invalid endpoint "${endpoint}": must stay on ${this.baseUrl}`);
     }
@@ -57,6 +57,16 @@ export class PaystackClient {
     if (data && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method.toUpperCase())) {
       headers['Content-Type'] = 'application/json';
       options.body = JSON.stringify(data);
+    }
+
+    // GET requests carry their data as query parameters
+    if (data && typeof data === 'object' && method.toUpperCase() === 'GET') {
+      const query = new URLSearchParams();
+      for (const [key, value] of Object.entries(data)) {
+        if (value !== undefined && value !== null) query.append(key, String(value));
+      }
+      const queryString = query.toString();
+      if (queryString) url += `${url.includes('?') ? '&' : '?'}${queryString}`;
     }
     options.headers = headers;
 

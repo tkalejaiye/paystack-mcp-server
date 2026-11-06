@@ -2,6 +2,7 @@ import assert from 'node:assert';
 import { redactSensitiveData } from '../src/logger.js';
 import { PaystackClient } from '../src/paystack-client.js';
 import { SERVER_INSTRUCTIONS } from '../src/server.js';
+import { registerInvoiceTools } from '../src/tools/invoices.js';
 import {
   assertLiveRequestAllowed,
   createModePaystackClient,
@@ -150,6 +151,52 @@ describe('Key modes', () => {
 
         await client.makeRequest('GET', '/balance');
         assert.deepStrictEqual(calls, ['GET https://api.paystack.co/balance']);
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
+  });
+
+  describe('invoice tools in live mode', () => {
+    it('should only use allowlisted endpoints', async () => {
+      const originalFetch = global.fetch;
+      const calls: string[] = [];
+      global.fetch = async (input: any, init?: RequestInit) => {
+        const call = `${init?.method} ${new URL(String(input)).pathname}`;
+        calls.push(call);
+        const invoice = { customer_code: 'CUS_ada', request_code: 'PRQ_abc', amount: 1000 };
+        const data = call === 'GET /paymentrequest' ? [invoice] : invoice;
+        return {
+          status: 200,
+          text: async () => JSON.stringify({ status: true, data }),
+        } as Response;
+      };
+      try {
+        const handlers: Record<string, any> = {};
+        const server = { registerTool: (name: string, _c: any, h: any) => (handlers[name] = h) };
+        registerInvoiceTools(server as any, new LiveModePaystackClient(LIVE_KEY));
+
+        const results = [
+          await handlers.create_invoice({
+            customer: 'ada@example.com',
+            amount: 10,
+            currency: 'NGN',
+            send_notification: true,
+            draft: false,
+          }),
+          await handlers.send_invoice_reminder({ code: 'PRQ_abc' }),
+          await handlers.get_invoice_status({ code: 'PRQ_abc' }),
+          await handlers.list_invoices({ perPage: 20, page: 1 }),
+        ];
+
+        assert.ok(results.every((result) => !result.isError));
+        assert.deepStrictEqual(calls, [
+          'GET /customer/ada%40example.com',
+          'POST /paymentrequest',
+          'POST /paymentrequest/notify/PRQ_abc',
+          'GET /paymentrequest/verify/PRQ_abc',
+          'GET /paymentrequest',
+        ]);
       } finally {
         global.fetch = originalFetch;
       }
