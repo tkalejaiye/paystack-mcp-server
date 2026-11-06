@@ -1,13 +1,13 @@
 import assert from 'node:assert';
-import path from 'node:path';
+import { OpenAPIV3 } from 'openapi-types';
 import { OpenAPIParser } from '../src/openapi-parser.js';
+import openapiSpec from '../src/generated/paystack-openapi.json';
 
 describe('OpenAPI parsing', () => {
-  const oasPath = path.join(__dirname, '../', 'src/data/paystack.openapi.yaml');
-  const openapi = new OpenAPIParser(oasPath);
+  const openapi = new OpenAPIParser(openapiSpec as unknown as OpenAPIV3.Document);
 
-  before(async () => {
-    await openapi.parse();
+  before(() => {
+    openapi.parse();
   });
 
   describe('Get operation by ID', () => {

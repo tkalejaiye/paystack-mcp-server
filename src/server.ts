@@ -1,12 +1,20 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import path from 'path';
+import { OpenAPIV3 } from 'openapi-types';
 import { OpenAPIParser } from './openapi-parser';
+import { PaystackClient } from './paystack-client';
 import { registerAllTools } from './tools';
 import { registerAllResources } from './resources';
 import { loadSkillContent } from './skill-loader';
+// Generated from src/data at build time by scripts/bundle-data.mjs
+import openapiSpec from './generated/paystack-openapi.json';
+import bundledSkillContent from './generated/paystack-skill.json';
 
-const SERVER_INSTRUCTIONS = `You are connected to the Paystack MCP Server, which provides access to the full Paystack API.
+export const SERVER_INFO = {
+  name: 'paystack',
+  version: '0.0.1',
+};
+
+export const SERVER_INSTRUCTIONS = `You are connected to the Paystack MCP Server, which provides access to the full Paystack API.
 
 ## Source Priority
 1. Use this server's tools and resources as the primary source of truth for API details:
@@ -29,35 +37,29 @@ const SERVER_INSTRUCTIONS = `You are connected to the Paystack MCP Server, which
 Always call "get_paystack_operation" to get endpoint details before calling "make_paystack_request". Do not guess endpoint paths, methods, or parameter names.
 `;
 
-async function createServer(cliApiKey?: string) {
-  const server = new McpServer(
-    {
-      name: 'paystack',
-      version: '0.0.1',
-    },
-    {
-      instructions: SERVER_INSTRUCTIONS,
-    },
-  );
+/**
+ * Register all Paystack tools and resources on an existing MCP server.
+ * This is transport-agnostic so it can back the stdio server or a remote one.
+ */
+export async function registerPaystackCapabilities(
+  server: McpServer,
+  paystackClient: PaystackClient,
+) {
+  const openapi = new OpenAPIParser(openapiSpec as unknown as OpenAPIV3.Document);
+  openapi.parse();
 
-  const oasPath = path.join(__dirname, './', 'data/paystack.openapi.yaml');
-  const openapi = new OpenAPIParser(oasPath);
+  const skillContent = await loadSkillContent(bundledSkillContent);
 
-  await openapi.parse();
-
-  const bundledSkillPath = path.join(__dirname, 'data', 'paystack-skill.md');
-  const skillContent = await loadSkillContent(bundledSkillPath);
-
-  registerAllTools(server, openapi, cliApiKey);
+  registerAllTools(server, openapi, paystackClient);
   registerAllResources(server, openapi, skillContent);
-
-  return server;
 }
 
-export async function startServer(cliApiKey?: string) {
-  const server = await createServer(cliApiKey);
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  console.error('Paystack MCP Server running on stdio...');
+export async function createServer(paystackClient: PaystackClient) {
+  const server = new McpServer(SERVER_INFO, {
+    instructions: SERVER_INSTRUCTIONS,
+  });
+
+  await registerPaystackCapabilities(server, paystackClient);
+
   return server;
 }

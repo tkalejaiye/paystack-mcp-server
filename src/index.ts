@@ -39,7 +39,7 @@ async function main() {
     process.exit(0);
   }
 
-  const { startServer } = await import('./server');
+  const { startServer } = await import('./stdio-server');
 
   // Parse API key from CLI
   const cliApiKey = parseApiKey();

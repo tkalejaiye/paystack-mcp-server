@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import { PaystackClient } from './paystack-client';
 
 // Load environment variables from .env file
 dotenv.config({ quiet: true });
@@ -39,4 +40,12 @@ export function createPaystackConfig(cliApiKey?: string) {
     secretKey: cfg.PAYSTACK_TEST_SECRET_KEY,
     timeout: 30000, // 30 seconds
   } as const;
+}
+
+/**
+ * Create a PaystackClient instance with configuration
+ */
+export function createPaystackClient(cliApiKey?: string): PaystackClient {
+  const config = createPaystackConfig(cliApiKey);
+  return new PaystackClient(config.secretKey, config.baseURL, undefined, config.timeout);
 }

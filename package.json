@@ -11,22 +11,27 @@
     "paystack-mcp-server": "./build/index.js"
   },
   "scripts": {
-    "build": "tsc && cp -r src/data build/",
+    "bundle:data": "node scripts/bundle-data.mjs",
+    "build": "npm run bundle:data && tsc",
     "build:watch": "tsc --watch",
     "prepack": "npm run build",
     "prepublishOnly": "npm run build && npm test",
-    "dev": "tsx src/index.ts",
+    "dev": "npm run bundle:data && tsx src/index.ts",
     "inspect": "set DANGEROUSLY_OMIT_AUTH=true && CLIENT_PORT=8090 SERVER_PORT=9000 npx @modelcontextprotocol/inspector npm run dev",
     "test": "mocha",
     "lint": "eslint src/ test/",
     "lint:fix": "eslint src/ test/ --fix",
     "format:check": "prettier --check src/ test/",
-    "format": "prettier --write src/ test/"
+    "format": "prettier --write src/ test/",
+    "pretest": "npm run bundle:data"
   },
   "engines": {
     "node": ">=20.0.0"
   },
-  "files": [ "build", "README.md" ],
+  "files": [
+    "build",
+    "README.md"
+  ],
   "keywords": [
     "paystack",
     "mcp",
@@ -39,7 +44,6 @@
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
-    "@apidevtools/swagger-parser": "^12.1.0",
     "dotenv": "^17.2.3",
     "zod": "^4.3.6"
   },
