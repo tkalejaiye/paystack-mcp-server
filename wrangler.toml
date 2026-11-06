@@ -1,0 +1,37 @@
+# Cloudflare Workers deployment (fork-only). See README → "Deploying to Cloudflare".
+name = "paystack-mcp"
+main = "src/worker/index.ts"
+compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Regenerate src/generated from src/data before every dev/deploy bundle
+[build]
+command = "npm run bundle:data"
+
+[vars]
+# "test" (default) or "live". Live mode needs an sk_live_ key and enforces src/worker/live-allowlist.ts
+PAYSTACK_MODE = "test"
+# Comma-separated GitHub usernames allowed to sign in
+ALLOWED_GITHUB_USERS = "tkalejaiye"
+# This deployment's public origin; the MCP endpoint is PUBLIC_URL + /mcp
+PUBLIC_URL = "https://paystack-mcp.REPLACE_WITH_SUBDOMAIN.workers.dev"
+
+# Secrets (set with `wrangler secret put`, never committed):
+#   GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, PAYSTACK_SECRET_KEY, COOKIE_ENCRYPTION_KEY
+
+# OAuth clients, grants and tokens
+[[kv_namespaces]]
+binding = "OAUTH_KV"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# One Durable Object per MCP session
+[[durable_objects.bindings]]
+name = "MCP_OBJECT"
+class_name = "PaystackMCP"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["PaystackMCP"]
+
+[observability]
+enabled = true
