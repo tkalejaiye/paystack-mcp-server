@@ -14,7 +14,7 @@ PAYSTACK_MODE = "test"
 # Comma-separated GitHub usernames allowed to sign in
 ALLOWED_GITHUB_USERS = "tkalejaiye"
 # This deployment's public origin; the MCP endpoint is PUBLIC_URL + /mcp
-PUBLIC_URL = "https://paystack-mcp.REPLACE_WITH_SUBDOMAIN.workers.dev"
+PUBLIC_URL = "https://paystack-mcp.electric-friends.workers.dev"
 
 # Secrets (set with `wrangler secret put`, never committed):
 #   GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, PAYSTACK_SECRET_KEY, COOKIE_ENCRYPTION_KEY
@@ -22,7 +22,7 @@ PUBLIC_URL = "https://paystack-mcp.REPLACE_WITH_SUBDOMAIN.workers.dev"
 # OAuth clients, grants and tokens
 [[kv_namespaces]]
 binding = "OAUTH_KV"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+id = "e76384da59344b10a5c362d91defb547"
 
 # One Durable Object per MCP session
 [[durable_objects.bindings]]
