@@ -20,7 +20,8 @@ export const SERVER_INSTRUCTIONS = `You are connected to the Paystack MCP Server
 1. Use this server's tools and resources as the primary source of truth for API details:
    - "paystack_operation_list" resource: browse all available API operations
    - "get_paystack_operation" tool: get endpoint details (method, path, parameters, request body)
-   - "make_paystack_request" tool: execute API requests
+   - "read_paystack_data" tool: execute read-only (GET) API requests
+   - "make_paystack_request" tool: execute API requests that create, change or delete data (POST, PUT, PATCH, DELETE)
 2. For integration guides, best practices, and deeper context, refer to Paystack documentation at https://paystack.com/docs/llms.txt
 3. For code snippets in JS/TS or cURL, refer to the "paystack_skill" resource
 4. If information is not available from the above sources, say so clearly — do not invent Paystack-specific details
@@ -34,7 +35,7 @@ export const SERVER_INSTRUCTIONS = `You are connected to the Paystack MCP Server
 - Validate webhook signatures using your secret key before processing events
 
 ## Workflow
-Always call "get_paystack_operation" to get endpoint details before calling "make_paystack_request". Do not guess endpoint paths, methods, or parameter names.
+Always call "get_paystack_operation" to get endpoint details before calling "read_paystack_data" or "make_paystack_request". Do not guess endpoint paths, methods, or parameter names.
 `;
 
 /**
