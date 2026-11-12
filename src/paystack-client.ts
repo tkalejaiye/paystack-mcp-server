@@ -34,7 +34,15 @@ export class PaystackClient {
    */
 
   async makeRequest<T>(method: string, endpoint: string, data?: any): Promise<PaystackResponse<T>> {
+    // The secret key is sent with every request, so never let a path change the host
+    // (e.g. "@evil.example/x" would otherwise become https://api.paystack.co@evil.example/x)
+    if (!endpoint.startsWith('/')) {
+      throw new Error(`Invalid endpoint "${endpoint}": paths must start with "/"`);
+    }
     const url = `${this.baseUrl}${endpoint}`;
+    if (new URL(url).origin !== new URL(this.baseUrl).origin) {
+      throw new Error(`Invalid endpoint "${endpoint}": must stay on ${this.baseUrl}`);
+    }
 
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.secretKey}`,
