@@ -8,6 +8,7 @@ describe('MakePaystackRequestTool', () => {
   describe('Error handling with isError flag', () => {
     let server: McpServer;
     let toolHandler: any;
+    let readHandler: any;
 
     before(() => {
       // Create a mock MCP server
@@ -15,6 +16,9 @@ describe('MakePaystackRequestTool', () => {
         registerTool: (name: string, config: any, handler: any) => {
           if (name === 'make_paystack_request') {
             toolHandler = handler;
+          }
+          if (name === 'read_paystack_data') {
+            readHandler = handler;
           }
         },
       } as any;
@@ -37,9 +41,8 @@ describe('MakePaystackRequestTool', () => {
       };
 
       try {
-        const result = await toolHandler({
+        const result = await readHandler({
           request: {
-            method: 'GET',
             path: '/test-endpoint',
           },
         });
@@ -76,9 +79,8 @@ describe('MakePaystackRequestTool', () => {
       };
 
       try {
-        const result = await toolHandler({
+        const result = await readHandler({
           request: {
-            method: 'GET',
             path: '/test-endpoint',
           },
         });
@@ -136,9 +138,8 @@ describe('MakePaystackRequestTool', () => {
       };
 
       try {
-        const result = await toolHandler({
+        const result = await readHandler({
           request: {
-            method: 'GET',
             path: '/customer/list',
           },
         });
@@ -151,6 +152,87 @@ describe('MakePaystackRequestTool', () => {
       }
     });
   });
+
+  describe('Read and write tools', () => {
+    const tools: Record<string, { config: any; handler: any }> = {};
+    let calls: string[] = [];
+    const originalFetch = global.fetch;
+
+    before(() => {
+      const server = {
+        registerTool: (name: string, config: any, handler: any) => {
+          tools[name] = { config, handler };
+        },
+      } as any;
+      registerMakePaystackRequestTool(
+        server,
+        new PaystackClient('sk_test_1234567890abcdef1234567890abcdef12345678'),
+      );
+    });
+
+    beforeEach(() => {
+      calls = [];
+      global.fetch = async (input: any, init?: RequestInit) => {
+        calls.push(`${init?.method} ${String(input)}${init?.body ? ` ${init.body}` : ''}`);
+        return { status: 200, text: async () => '{"status":true,"data":{}}' } as Response;
+      };
+    });
+
+    afterEach(() => {
+      global.fetch = originalFetch;
+    });
+
+    it('should mark reads as read-only and writes as destructive', () => {
+      const read = tools.read_paystack_data.config.annotations;
+      const write = tools.make_paystack_request.config.annotations;
+
+      assert.strictEqual(read.readOnlyHint, true);
+      assert.strictEqual(read.idempotentHint, true);
+      assert.strictEqual(write.readOnlyHint, false);
+      assert.strictEqual(write.destructiveHint, true);
+    });
+
+    it('should always send GET from the read tool', async () => {
+      const result = await tools.read_paystack_data.handler({
+        request: { path: '/transaction/verify/ref_123' },
+      });
+
+      assert.ok(!result.isError);
+      assert.deepStrictEqual(calls, ['GET https://api.paystack.co/transaction/verify/ref_123']);
+    });
+
+    it('should send write methods from the write tool', async () => {
+      const result = await tools.make_paystack_request.handler({
+        request: { method: 'post', path: '/customer', data: { email: 'ada@example.com' } },
+      });
+
+      assert.ok(!result.isError);
+      assert.deepStrictEqual(calls, [
+        'POST https://api.paystack.co/customer {"email":"ada@example.com"}',
+      ]);
+    });
+
+    it('should point GET requests on the write tool at the read tool', async () => {
+      const result = await tools.make_paystack_request.handler({
+        request: { method: 'GET', path: '/transaction' },
+      });
+
+      assert.strictEqual(result.isError, true);
+      assert.ok(result.content[0].text.includes('read_paystack_data'));
+      assert.strictEqual(calls.length, 0);
+    });
+
+    it('should reject unknown methods without sending a request', async () => {
+      const result = await tools.make_paystack_request.handler({
+        request: { method: 'TRACE', path: '/transaction' },
+      });
+
+      assert.strictEqual(result.isError, true);
+      assert.ok(result.content[0].text.includes('Unsupported method'));
+      assert.strictEqual(calls.length, 0);
+    });
+  });
+
   describe('Missing API Key Validation', () => {
     let originalExit: typeof process.exit;
     let exitCode: number | undefined;

@@ -113,10 +113,13 @@ The Paystack MCP Server exposes the **entire Paystack API** to AI assistants by 
 
 ### Available Tools
 
-| Tool                     | Description                                                        |
-| ------------------------ | ------------------------------------------------------------------ |
-| `get_paystack_operation` | Fetch operation details (method, path, parameters) by operation ID |
-| `make_paystack_request`  | Execute a Paystack API request                                     |
+| Tool                     | Description                                                                        |
+| ------------------------ | ---------------------------------------------------------------------------------- |
+| `get_paystack_operation` | Fetch operation details (method, path, parameters) by operation ID                 |
+| `read_paystack_data`     | Execute a read-only (GET) Paystack API request                                     |
+| `make_paystack_request`  | Execute a request that creates, changes or deletes data (POST, PUT, PATCH, DELETE) |
+
+`read_paystack_data` is annotated as read-only and `make_paystack_request` as destructive, so MCP clients can auto-approve lookups while still asking before anything changes.
 
 ### Available Resources
 
@@ -130,7 +133,7 @@ When you ask your AI assistant something like _"Get me the last 5 transactions o
 
 1. The assistant calls `get_paystack_operation("transaction_list")` to look up the endpoint details
 2. It gets back the method (`GET`), path (`/transaction`), and available query parameters
-3. It then calls `make_paystack_request` with `{ method: "GET", path: "/transaction", data: { perPage: 5 } }`
+3. It then calls `read_paystack_data` with `{ path: "/transaction", data: { perPage: 5 } }`
 4. You get your transactions
 
 ### Prompt recommendation
