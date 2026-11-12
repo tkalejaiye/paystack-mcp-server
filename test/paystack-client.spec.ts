@@ -121,4 +121,52 @@ describe('PaystackClient', () => {
       }
     });
   });
+
+  describe('makeRequest - GET Query Parameters', () => {
+    async function requestedUrl(method: string, endpoint: string, data?: object) {
+      const originalFetch = global.fetch;
+      let captured: { url: string; body?: BodyInit | null } | undefined;
+      global.fetch = async (input: any, init?: RequestInit) => {
+        captured = { url: String(input), body: init?.body };
+        return { status: 200, text: async () => '{"status":true,"data":[]}' } as Response;
+      };
+      try {
+        await paystackClient.makeRequest(method, endpoint, data);
+        return captured!;
+      } finally {
+        global.fetch = originalFetch;
+      }
+    }
+
+    it('should send GET data as query parameters', async () => {
+      const { url, body } = await requestedUrl('GET', '/transaction', { perPage: 5, page: 2 });
+      assert.strictEqual(url, 'https://api.paystack.co/transaction?perPage=5&page=2');
+      assert.strictEqual(body, undefined);
+    });
+
+    it('should merge with a query string already in the path', async () => {
+      const { url } = await requestedUrl('get', '/transaction?status=success', { perPage: 5 });
+      assert.strictEqual(url, 'https://api.paystack.co/transaction?status=success&perPage=5');
+    });
+
+    it('should encode values and skip null or undefined ones', async () => {
+      const { url } = await requestedUrl('GET', '/customer', {
+        email: 'ada+test@example.com',
+        from: undefined,
+        to: null,
+      });
+      assert.strictEqual(url, 'https://api.paystack.co/customer?email=ada%2Btest%40example.com');
+    });
+
+    it('should leave GET requests without data unchanged', async () => {
+      const { url } = await requestedUrl('GET', '/balance');
+      assert.strictEqual(url, 'https://api.paystack.co/balance');
+    });
+
+    it('should keep sending POST data as a JSON body', async () => {
+      const { url, body } = await requestedUrl('POST', '/transaction/initialize', { amount: 5000 });
+      assert.strictEqual(url, 'https://api.paystack.co/transaction/initialize');
+      assert.strictEqual(body, '{"amount":5000}');
+    });
+  });
 });
