@@ -4,10 +4,15 @@ import { OpenAPIParser } from './openapi-parser';
 import { PaystackClient } from './paystack-client';
 import { registerAllTools } from './tools';
 import { registerAllResources } from './resources';
+import { registerAllPrompts } from './prompts';
+import { Workflow } from './workflows';
 import { loadSkillContent } from './skill-loader';
 // Generated from src/data at build time by scripts/bundle-data.mjs
 import openapiSpec from './generated/paystack-openapi.json';
 import bundledSkillContent from './generated/paystack-skill.json';
+import bundledWorkflows from './generated/paystack-workflows.json';
+
+const workflows = bundledWorkflows as Workflow[];
 
 export const SERVER_INFO = {
   name: 'paystack',
@@ -22,6 +27,7 @@ export const SERVER_INSTRUCTIONS = `You are connected to the Paystack MCP Server
    - "get_paystack_operation" tool: get endpoint details (method, path, parameters, request body)
    - "read_paystack_data" tool: execute read-only (GET) API requests
    - "make_paystack_request" tool: execute API requests that create, change or delete data (POST, PUT, PATCH, DELETE)
+   - "get_paystack_workflow" tool: step-by-step workflows for multi-step tasks (also available as prompts and "paystack://workflows/{name}" resources)
 2. For integration guides, best practices, and deeper context, refer to Paystack documentation at https://paystack.com/docs/llms.txt
 3. For code snippets in JS/TS or cURL, refer to the "paystack_skill" resource
 4. If information is not available from the above sources, say so clearly — do not invent Paystack-specific details
@@ -36,6 +42,8 @@ export const SERVER_INSTRUCTIONS = `You are connected to the Paystack MCP Server
 
 ## Workflow
 Always call "get_paystack_operation" to get endpoint details before calling "read_paystack_data" or "make_paystack_request". Do not guess endpoint paths, methods, or parameter names.
+
+For tasks that take more than one API call (for example creating an invoice for a new customer, or a dedicated virtual account), call "get_paystack_workflow" first and follow the matching workflow if there is one.
 `;
 
 /**
@@ -51,8 +59,9 @@ export async function registerPaystackCapabilities(
 
   const skillContent = await loadSkillContent(bundledSkillContent);
 
-  registerAllTools(server, openapi, paystackClient);
-  registerAllResources(server, openapi, skillContent);
+  registerAllTools(server, openapi, paystackClient, workflows);
+  registerAllResources(server, openapi, skillContent, workflows);
+  registerAllPrompts(server, workflows);
 }
 
 export async function createServer(paystackClient: PaystackClient) {

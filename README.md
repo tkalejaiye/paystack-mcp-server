@@ -118,14 +118,27 @@ The Paystack MCP Server exposes the **entire Paystack API** to AI assistants by 
 | `get_paystack_operation` | Fetch operation details (method, path, parameters) by operation ID                 |
 | `read_paystack_data`     | Execute a read-only (GET) Paystack API request                                     |
 | `make_paystack_request`  | Execute a request that creates, changes or deletes data (POST, PUT, PATCH, DELETE) |
+| `get_paystack_workflow`  | List step-by-step workflows for multi-step tasks, or get one by name               |
 
 `read_paystack_data` is annotated as read-only and `make_paystack_request` as destructive, so MCP clients can auto-approve lookups while still asking before anything changes.
 
 ### Available Resources
 
-| Resource                  | URI                          | Description                                              |
-| ------------------------- | ---------------------------- | -------------------------------------------------------- |
-| `paystack_operation_list` | `paystack://operations/list` | List all available Paystack operations and their details |
+| Resource                  | URI                           | Description                                              |
+| ------------------------- | ----------------------------- | -------------------------------------------------------- |
+| `paystack_operation_list` | `paystack://operations/list`  | List all available Paystack operations and their details |
+| `paystack_workflow`       | `paystack://workflows/{name}` | A step-by-step workflow for a multi-step task            |
+
+### Workflows
+
+Some tasks take several API calls in the right order: look up or create a customer, validate them, wait for an asynchronous result, then act. Workflows are step-by-step recipes for these, written as markdown in [`src/data/workflows`](src/data/workflows). Every step runs through the generic tools above, so a new capability is a new markdown file rather than new code.
+
+| Workflow                           | What it does                                                                     |
+| ---------------------------------- | -------------------------------------------------------------------------------- |
+| `create-invoice`                   | Find or create the customer, create a payment request, and optionally email it   |
+| `create-dedicated-virtual-account` | Validate a customer's identity and create a dedicated virtual account for them   |
+
+Each workflow is available three ways: as an MCP **prompt** (start it from your client and fill in the inputs you know), as a **resource**, and through the `get_paystack_workflow` tool, so the assistant can find and follow one on its own. See [`src/data/workflows/README.md`](src/data/workflows/README.md) to add one; `npm test` checks every workflow against the OpenAPI spec.
 
 ### Example
 
