@@ -8,6 +8,7 @@ export class OpenAPIParser {
    */
   private spec: OpenAPIV3.Document;
   private operations: Oas.PathsOperations = {};
+  private rawOperations: Record<string, OpenAPIV3.OperationObject> = {};
 
   constructor(spec: OpenAPIV3.Document) {
     this.spec = spec;
@@ -220,12 +221,56 @@ export class OpenAPIParser {
         }
 
         this.operations[operationId!] = partialOperation;
+        // Keep the spec's own operation, with path-level parameters, for getOperationFieldNames
+        this.rawOperations[operationId!] = {
+          ...(operation as OpenAPIV3.OperationObject),
+          parameters: [...(pathParameters ?? []), ...(innerParams ?? [])],
+        };
       });
     });
   }
 
   getOperationById(operationId: string): Partial<Oas.Operation> | undefined {
     return this.operations[operationId];
+  }
+
+  /**
+   * Names of every parameter and request body field in an operation, read from the
+   * spec itself (resolving $refs) rather than the simplified operation details.
+   */
+  getOperationFieldNames(operationId: string): string[] {
+    const operation = this.rawOperations[operationId];
+    if (!operation) return [];
+
+    const names = new Set<string>();
+    const seen = new Set<object>();
+    const resolve = (value: any): any =>
+      value && '$ref' in value
+        ? resolve(
+            value.$ref
+              .split('/')
+              .slice(1)
+              .reduce((node: any, key: string) => node?.[key], this.spec),
+          )
+        : value;
+    const collect = (schema: any) => {
+      schema = resolve(schema);
+      if (!schema || typeof schema !== 'object' || seen.has(schema)) return;
+      seen.add(schema);
+      Object.entries(schema.properties ?? {}).forEach(([name, property]) => {
+        names.add(name);
+        collect(property);
+      });
+      [schema.items, ...(schema.allOf ?? []), ...(schema.oneOf ?? []), ...(schema.anyOf ?? [])]
+        .filter(Boolean)
+        .forEach(collect);
+    };
+
+    (operation.parameters ?? []).forEach((parameter) => names.add(resolve(parameter).name));
+    const requestBody = resolve(operation.requestBody) as OpenAPIV3.RequestBodyObject | undefined;
+    collect(requestBody?.content?.['application/json']?.schema);
+
+    return [...names];
   }
 
   getOperations(): Record<string, Partial<Oas.Operation>> {
