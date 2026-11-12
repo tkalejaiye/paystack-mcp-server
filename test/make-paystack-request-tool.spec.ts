@@ -1,6 +1,8 @@
 import assert from 'node:assert';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { registerMakePaystackRequestTool } from '../src/tools/make-paystack-request.js';
+import { PaystackClient } from '../src/paystack-client.js';
+import { createPaystackClient } from '../src/config.js';
 
 describe('MakePaystackRequestTool', () => {
   describe('Error handling with isError flag', () => {
@@ -18,7 +20,10 @@ describe('MakePaystackRequestTool', () => {
       } as any;
 
       // Pass a test API key to avoid environment variable requirement
-      registerMakePaystackRequestTool(server, 'sk_test_1234567890abcdef1234567890abcdef12345678');
+      registerMakePaystackRequestTool(
+        server,
+        new PaystackClient('sk_test_1234567890abcdef1234567890abcdef12345678'),
+      );
     });
 
     it('should return isError: true for non-JSON responses', async () => {
@@ -147,7 +152,6 @@ describe('MakePaystackRequestTool', () => {
     });
   });
   describe('Missing API Key Validation', () => {
-    let server: McpServer;
     let originalExit: typeof process.exit;
     let exitCode: number | undefined;
     let consoleErrors: string[] = [];
@@ -168,10 +172,6 @@ describe('MakePaystackRequestTool', () => {
       console.error = (...args: any[]) => {
         consoleErrors.push(args.join(' '));
       };
-
-      server = {
-        registerTool: (_name: string, _config: any, _handler: any) => {},
-      } as any;
     });
 
     afterEach(() => {
@@ -185,8 +185,8 @@ describe('MakePaystackRequestTool', () => {
       delete process.env.PAYSTACK_TEST_SECRET_KEY;
 
       try {
-        registerMakePaystackRequestTool(server); // No cliApiKey parameter
-        assert.fail('Expected registerMakePaystackRequestTool to throw an error');
+        createPaystackClient(); // No cliApiKey parameter
+        assert.fail('Expected createPaystackClient to throw an error');
       } catch (error: any) {
         assert.ok(error.message.includes('Process would exit with code 1'));
         assert.strictEqual(exitCode, 1);
